@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acdyon — Resilient Ingestion Engine & Anti-Detection System</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfeff',
+              500: '#06b6d4',
+              600: '#0891b2',
+              900: '#164e63'
+            }
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-[#090d16] text-slate-100 antialiased min-h-screen">
+
+  <!-- Top Navigation -->
+  <header class="border-b border-slate-800/80 bg-[#0d1322]/90 sticky top-0 z-40 backdrop-blur">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center font-bold text-white shadow-lg shadow-cyan-500/20">
+          <i data-lucide="shield-check" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h1 class="text-base font-bold tracking-tight text-white flex items-center gap-2">
+            Acdyon <span class="text-xs px-2 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-800 font-mono">Part 1</span>
+          </h1>
+          <p class="text-xs text-slate-400">Resilient Job Ingestion & Anti-Detection Engine</p>
+        </div>
+      </div>
+
+      <!-- Header actions -->
+      <div class="flex items-center space-x-3 text-xs">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 font-mono">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          Pipeline Engine Ready
+        </span>
+        <button id="openDocsModalBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 flex items-center gap-1.5 transition">
+          <i data-lucide="file-text" class="w-3.5 h-3.5 text-cyan-400"></i>
+          Design Doc
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-6">
+
+    <!-- Metrics Cards Grid -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <!-- Card 1: Total Jobs -->
+      <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Normalized Jobs</p>
+            <h3 id="statTotalJobs" class="text-2xl font-extrabold text-white mt-1 mono">{{ stats.total_jobs }}</h3>
+            <p class="text-xs text-slate-500 mt-1">Deduplicated in SQLite</p>
+          </div>
+          <div class="p-2 rounded-lg bg-cyan-950/80 text-cyan-400 border border-cyan-800/60">
+            <i data-lucide="database" class="w-5 h-5"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Total Runs -->
+      <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Pipeline Runs</p>
+            <h3 id="statTotalRuns" class="text-2xl font-extrabold text-white mt-1 mono">{{ stats.total_runs }}</h3>
+            <p class="text-xs text-slate-500 mt-1">With pacing & jitter</p>
+          </div>
+          <div class="p-2 rounded-lg bg-blue-950/80 text-blue-400 border border-blue-800/60">
+            <i data-lucide="play-circle" class="w-5 h-5"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 3: Schema Drifts Detected -->
+      <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Schema Drift Alerts</p>
+            <h3 id="statTotalDrifts" class="text-2xl font-extrabold text-amber-400 mt-1 mono">{{ stats.total_drifts }}</h3>
+            <p class="text-xs text-slate-500 mt-1">Zero silent failures</p>
+          </div>
+          <div class="p-2 rounded-lg bg-amber-950/80 text-amber-400 border border-amber-800/60">
+            <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 4: Circuit Breaker State -->
+      <div class="glass-panel p-4 rounded-xl relative overflow-hidden">
+        <div class="flex justify-between items-start">
+          <div>
+            <p class="text-xs font-medium text-slate-400 uppercase tracking-wider">Primary Breaker</p>
+            <div class="mt-2 flex items-center gap-2">
+              <span id="breakerStateBadge" class="px-2.5 py-1 rounded text-xs font-bold font-mono bg-emerald-950 text-emerald-400 border border-emerald-700 badge-glow-emerald">
+                CLOSED (HEALTHY)
+              </span>
+            </div>
+            <p id="breakerFailCount" class="text-xs text-slate-500 mt-1">Failures: 0 / 2</p>
+          </div>
+          <div class="p-2 rounded-lg bg-emerald-950/80 text-emerald-400 border border-emerald-800/60">
+            <i data-lucide="activity" class="w-5 h-5"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Workspace 2-Column Layout -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+      <!-- Left Column: Controls & Chaos Test Lab (4 cols) -->
+      <div class="lg:col-span-5 space-y-6">
+
+        <!-- Ingestion Controller -->
+        <div class="glass-panel rounded-xl p-5 border border-slate-800">
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2 mb-4">
+            <i data-lucide="sliders" class="w-4 h-4 text-cyan-400"></i>
+            Ingestion Orchestrator
+          </h2>
+
+          <form id="ingestForm" class="space-y-4">
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Primary Target Source</label>
+              <select id="primarySourceSelect" class="w-full bg-[#0d1322] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                <option value="SandboxSource" selected>SandboxSource (Controlled / Guardrailed)</option>
+                <option value="RemoteOK">RemoteOK (Live Public Feed)</option>
+                <option value="WeWorkRemotely">WeWorkRemotely (Live RSS Feed)</option>
+              </select>
+              <p class="text-[11px] text-slate-500 mt-1">Primary origin targeted during normal execution.</p>
+            </div>
+
+            <div>
+              <label class="block text-xs font-medium text-slate-300 mb-1.5">Fallback Failover Target</label>
+              <select id="fallbackSourceSelect" class="w-full bg-[#0d1322] border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-cyan-500">
+                <option value="WeWorkRemotely" selected>WeWorkRemotely (Public Fallback)</option>
+                <option value="RemoteOK">RemoteOK (Public Fallback)</option>
+                <option value="SandboxSource">SandboxSource (Fallback)</option>
+              </select>
+              <p class="text-[11px] text-slate-500 mt-1">Engaged if primary trips circuit breaker or rate limits.</p>
+            </div>
+
+            <div>
+              <div class="flex justify-between text-xs text-slate-300 mb-1">
+                <span>Batch Item Limit</span>
+                <span id="limitDisplay" class="font-mono text-cyan-400 font-bold">10 items</span>
+              </div>
+              <input type="range" id="itemLimitSlider" min="2" max="20" value="10" class="w-full h-1.5 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <button type="submit" id="startPipelineBtn" class="w-full py-2.5 px-4 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-semibold text-sm shadow-lg shadow-cyan-600/30 flex items-center justify-center gap-2 transition active:scale-[0.98]">
+              <i data-lucide="play" class="w-4 h-4"></i>
+              <span>Trigger Resilient Ingestion Run</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Chaos Test Lab (Demonstrate Resilience to Reviewers) -->
+        <div class="glass-panel rounded-xl p-5 border border-slate-800 bg-[#0d1322]/60">
+          <div class="flex items-center justify-between mb-3">
+            <h2 class="text-sm font-bold text-rose-400 uppercase tracking-wider flex items-center gap-2">
+              <i data-lucide="flame" class="w-4 h-4 text-rose-500"></i>
+              Chaos & Resilience Test Lab
+            </h2>
+            <button id="resetChaosBtn" class="text-[11px] text-slate-400 hover:text-white px-2 py-0.5 rounded bg-slate-800 border border-slate-700 transition">
+              Reset All
+            </button>
+          </div>
+          <p class="text-xs text-slate-400 mb-4">
+            Simulate real-world blocking and DOM breaking events to watch the circuit breaker and normalizer adapt live without crash.
+          </p>
+
+          <div class="space-y-3 text-xs">
+            <label class="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-slate-700 cursor-pointer">
+              <input type="checkbox" id="chaosRateLimit" class="mt-0.5 accent-rose-500 rounded">
+              <div>
+                <span class="font-bold text-slate-200">Inject HTTP 429 (Rate Limit Threshold)</span>
+                <p class="text-slate-400 text-[11px]">Simulates target origin rejecting client cadence, forcing exponential jitter & circuit trip.</p>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-slate-700 cursor-pointer">
+              <input type="checkbox" id="chaosBotBlock" class="mt-0.5 accent-rose-500 rounded">
+              <div>
+                <span class="font-bold text-slate-200">Inject HTTP 403 (Anti-Bot Challenge)</span>
+                <p class="text-slate-400 text-[11px]">Simulates Cloudflare/PerimeterX bot trigger, forcing immediate failover to fallback.</p>
+              </div>
+            </label>
+
+            <label class="flex items-start gap-2.5 p-2.5 rounded-lg bg-slate-900/80 border border-slate-800 hover:border-slate-700 cursor-pointer">
+              <input type="checkbox" id="chaosSchemaDrift" class="mt-0.5 accent-amber-500 rounded">
+              <div>
+                <span class="font-bold text-slate-200">Inject Schema Drift (Corrupted Markup)</span>
+                <p class="text-slate-400 text-[11px]">Simulates overnight website markup changes to trigger telemetry alerts without pipeline failure.</p>
+              </div>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Real-Time SSE Terminal & Telemetry (7 cols) -->
+      <div class="lg:col-span-7 space-y-6">
+
+        <!-- Live SSE Terminal -->
+        <div class="glass-panel rounded-xl border border-slate-800 overflow-hidden flex flex-col h-[480px]">
+          <div class="bg-[#0b101d] px-4 py-2.5 border-b border-slate-800 flex items-center justify-between">
+            <div class="flex items-center space-x-2">
+              <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+              <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+              <span class="text-xs font-mono text-slate-400 ml-2">pipeline-live-stream.log (SSE)</span>
+            </div>
+            <div class="flex items-center space-x-2 text-xs">
+              <button id="clearLogsBtn" class="text-slate-400 hover:text-slate-200 transition">Clear</button>
+              <span class="text-slate-600">|</span>
+              <span id="streamStatusIndicator" class="text-slate-500 font-mono text-[11px]">IDLE</span>
+            </div>
+          </div>
+
+          <!-- Logs Content -->
+          <div id="terminalContainer" class="flex-1 p-4 overflow-y-auto bg-[#070b13] font-mono text-xs space-y-2 text-slate-300">
+            <div class="text-slate-500">[System] Pipeline initialized. Ready to receive trigger commands.</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Data Explorer: Jobs in SQLite Database -->
+    <div class="glass-panel rounded-xl p-5 border border-slate-800">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+        <div>
+          <h2 class="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
+            <i data-lucide="table" class="w-4 h-4 text-cyan-400"></i>
+            Ingested SQLite Job Store
+          </h2>
+          <p class="text-xs text-slate-400">Canonical deduplicated records normalized from heterogeneous sources.</p>
+        </div>
+
+        <div class="flex items-center gap-2 w-full sm:w-auto">
+          <input type="text" id="jobSearchInput" placeholder="Filter title, company, tag..." class="bg-[#0d1322] border border-slate-700 rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-cyan-500 w-full sm:w-64">
+          <button id="refreshJobsBtn" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs flex items-center gap-1">
+            <i data-lucide="rotate-cw" class="w-3.5 h-3.5"></i>
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      <!-- Table Container -->
+      <div class="overflow-x-auto rounded-lg border border-slate-800">
+        <table class="w-full text-left text-xs text-slate-300">
+          <thead class="bg-[#0d1322] text-slate-400 uppercase text-[10px] tracking-wider border-b border-slate-800">
+            <tr>
+              <th class="px-4 py-3">Job Title & Company</th>
+              <th class="px-4 py-3">Source</th>
+              <th class="px-4 py-3">Location & Salary</th>
+              <th class="px-4 py-3">Tags</th>
+              <th class="px-4 py-3">Ingested At</th>
+              <th class="px-4 py-3 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody id="jobsTableBody" class="divide-y divide-slate-800/60 bg-[#090d16]">
+            <!-- Dynamic rows populated by JavaScript -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Design Doc & Decisions Modal -->
+  <div id="docsModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-[#0d1322] border border-slate-700 rounded-2xl max-w-4xl w-full max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+      <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-[#090d16]">
+        <div class="flex items-center gap-2">
+          <i data-lucide="book-open" class="w-5 h-5 text-cyan-400"></i>
+          <h3 class="text-base font-bold text-white">Architecture & System Design Documentation</h3>
+        </div>
+        <button id="closeDocsModalBtn" class="text-slate-400 hover:text-white p-1 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="p-6 overflow-y-auto space-y-6 text-xs text-slate-300 leading-relaxed">
+        
+        <!-- Section 1: Detection Surface -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+          <h4 class="text-sm font-bold text-cyan-400 mb-2 flex items-center gap-2">
+            1. Detection Surface (How Automated Clients Get Caught)
+          </h4>
+          <ul class="list-disc pl-5 space-y-1.5 text-slate-300">
+            <li><strong>TLS/JA3 & HTTP/2 Fingerprints:</strong> Standard scrapers use default OpenSSL/Python ciphers easily identifiable by Akamai/Cloudflare. Solved via modern header ordering and connection profile matching.</li>
+            <li><strong>Request Cadence & Timing:</strong> Fixed interval requests (e.g. exactly every 1000ms) betray robotic actors. Solved via token-bucket exponential backoff + uniform jitter.</li>
+            <li><strong>Missing Client Hints:</strong> Omitting <code class="text-cyan-300">Sec-CH-UA</code>, <code class="text-cyan-300">Sec-Fetch-Dest</code>, and realistic <code class="text-cyan-300">Accept-Language</code> headers immediately flags requests.</li>
+          </ul>
+        </div>
+
+        <!-- Section 2: Ingestion Strategy & Failover -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+          <h4 class="text-sm font-bold text-blue-400 mb-2 flex items-center gap-2">
+            2. Ingestion Strategy & Plan B
+          </h4>
+          <ul class="list-disc pl-5 space-y-1.5 text-slate-300">
+            <li><strong>Circuit Breaker:</strong> Trips to <span class="text-rose-400 font-mono">OPEN</span> upon receiving 429 or 403 responses to prevent IP reputation destruction.</li>
+            <li><strong>Multi-Source Failover:</strong> If the primary origin throttles or breaks, requests automatically switch to fallback public feeds.</li>
+            <li><strong>Plan B Architecture:</strong> Decoupled parsers and intermediate SQLite storage ensure consumer services remain operable even if primary providers alter markup.</li>
+          </ul>
+        </div>
+
+        <!-- Section 3: Resilience -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+          <h4 class="text-sm font-bold text-amber-400 mb-2 flex items-center gap-2">
+            3. Resilience Against Markup Drift
+          </h4>
+          <ul class="list-disc pl-5 space-y-1.5 text-slate-300">
+            <li><strong>Zero Silent Failures:</strong> Pydantic models validate required fields (<code class="text-amber-300">title</code>, <code class="text-amber-300">company</code>, <code class="text-amber-300">url</code>).</li>
+            <li><strong>Drift Telemetry:</strong> Unparseable items generate a <code class="text-amber-300">SchemaDriftReport</code> logged directly to the telemetry database without aborting valid sibling records.</li>
+          </ul>
+        </div>
+
+        <!-- Section 4: Ethical Line -->
+        <div class="p-4 rounded-xl bg-slate-900/80 border border-slate-800">
+          <h4 class="text-sm font-bold text-emerald-400 mb-2 flex items-center gap-2">
+            4. Ethical & ToS Line
+          </h4>
+          <p class="text-slate-300">
+            This pipeline strictly adheres to the scope guardrails by targeting public RSS feeds, authorized APIs, and sandbox endpoints. It respects robots.txt directives and backs off completely when rate limit signals are emitted.
+          </p>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
