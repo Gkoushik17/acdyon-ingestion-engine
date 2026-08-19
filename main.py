@@ -43,11 +43,14 @@ async def serve_dashboard(request: Request):
     """Serves the interactive dark-mode diagnostics dashboard."""
     sources = list(SOURCES_REGISTRY.keys())
     stats = get_stats()
-    return templates.TemplateResponse("index.html", {
-        "request": request,
-        "sources": sources,
-        "stats": stats
-    })
+    return templates.TemplateResponse(
+        request=request,
+        name="index.html",
+        context={
+            "sources": sources,
+            "stats": stats
+        }
+    )
 
 
 @app.get("/api/health")
